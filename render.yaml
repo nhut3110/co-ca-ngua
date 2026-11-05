@@ -1,0 +1,20 @@
+services:
+  - type: web
+    name: skyhoof-api
+    runtime: node
+    plan: free
+    region: singapore
+    buildCommand: npm ci && npm run build -w @skyhoof/game-core && npm run build -w @skyhoof/catalog && npm run build -w @skyhoof/api
+    startCommand: npm run start -w @skyhoof/api
+    healthCheckPath: /health
+    envVars:
+      - key: NODE_VERSION
+        value: 22.22.0
+      - key: WEB_ORIGIN
+        sync: false
+      - key: SUPABASE_URL
+        sync: false
+      - key: SUPABASE_SERVICE_ROLE_KEY
+        sync: false
+      - key: NODE_ENV
+        value: production

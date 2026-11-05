@@ -1,0 +1,15 @@
+:root {
+  --bg: #0e161d;
+  --surface: #17222b;
+  --surface-hover: #23323e;
+  --border: #dfbe7f33;
+  --border-strong: #e3c17a75;
+  --text: #f7f2e4;
+  --text-soft: #d5d4c5;
+  --muted: #9aa7a6;
+  --accent: #e5c172;
+  --gold: var(--accent);
+  --arcane-cyan: #5fd6ff;
+  --arcane-violet: #b682ff;
+  --display: 'Lora', Georgia, serif;
+}

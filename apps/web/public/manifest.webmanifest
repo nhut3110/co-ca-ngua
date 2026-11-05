@@ -1,0 +1,23 @@
+{
+  "id": "/",
+  "name": "Skyhoof — Bốn miền phép thuật",
+  "short_name": "Skyhoof",
+  "description": "Cá ngựa 3D, hiệp sĩ và bốn miền phép thuật. Chơi offline với bạn máy.",
+  "lang": "vi",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "orientation": "landscape",
+  "background_color": "#101816",
+  "theme_color": "#101816",
+  "icons": [
+    { "src": "/icons/icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
+    { "src": "/icons/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" },
+    {
+      "src": "/icons/icon-maskable.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "maskable"
+    }
+  ]
+}

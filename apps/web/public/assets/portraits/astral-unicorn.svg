@@ -1,0 +1,19 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 160 160" fill="none">
+  <defs>
+    <radialGradient id="ubg" cx="50%" cy="38%" r="62%">
+      <stop offset="0%" stop-color="#1e4968"/>
+      <stop offset="100%" stop-color="#0d1826"/>
+    </radialGradient>
+    <linearGradient id="horn" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#ffffff"/>
+      <stop offset="50%" stop-color="#8cf0ff"/>
+      <stop offset="100%" stop-color="#9e7bff"/>
+    </linearGradient>
+  </defs>
+  <rect width="160" height="160" rx="24" fill="url(#ubg)"/>
+  <circle cx="80" cy="80" r="62" stroke="url(#horn)" stroke-width="2" stroke-opacity="0.5"/>
+  <path d="M82 46L122 14L96 56Z" fill="url(#horn)"/>
+  <path d="M46 134C48 102 58 84 66 68L54 62L64 44L84 40C98 44 112 58 114 74C104 77 94 74 88 68C92 86 100 108 104 134Z" fill="#eef9ff" stroke="#8ce7ff" stroke-width="3"/>
+  <path d="M58 46C40 52 34 72 44 90C36 102 40 116 52 124" stroke="url(#horn)" stroke-width="5" stroke-linecap="round"/>
+  <circle cx="82" cy="56" r="4.5" fill="#7cf7ff"/>
+</svg>

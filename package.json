@@ -1,0 +1,41 @@
+{
+  "name": "skyhoof",
+  "private": true,
+  "version": "0.1.0",
+  "workspaces": [
+    "apps/*",
+    "packages/*"
+  ],
+  "scripts": {
+    "dev": "npm run build -w @skyhoof/game-core && npm run build -w @skyhoof/catalog && concurrently -n core,catalog,web,api -c green,blue,cyan,yellow \"npm run dev -w @skyhoof/game-core\" \"npm run dev -w @skyhoof/catalog\" \"npm run dev -w @skyhoof/web\" \"npm run dev -w @skyhoof/api\"",
+    "dev:web": "npm run dev -w @skyhoof/web",
+    "dev:api": "npm run dev -w @skyhoof/api",
+    "build": "npm run build -w @skyhoof/game-core && npm run build -w @skyhoof/catalog && npm run build -w @skyhoof/api && npm run build -w @skyhoof/web",
+    "typecheck": "npm run typecheck --workspaces --if-present",
+    "test": "vitest run",
+    "check": "npm run format:check && npm run typecheck && npm test && npm run build",
+    "format": "prettier --write .",
+    "format:check": "prettier --check .",
+    "test:browser": "node scripts/smoke.mjs",
+    "test:api": "node scripts/api-smoke.mjs",
+    "test:online-api": "node scripts/online-api-ci.mjs"
+  },
+  "devDependencies": {
+    "@gltf-transform/core": "^4.5.1",
+    "@gltf-transform/extensions": "^4.5.1",
+    "@gltf-transform/functions": "^4.5.1",
+    "@types/node": "^24.0.0",
+    "concurrently": "^9.2.0",
+    "jsqr": "^1.4.0",
+    "meshoptimizer": "^1.3.0",
+    "playwright": "^1.56.0",
+    "pngjs": "^7.0.0",
+    "prettier": "^3.9.10",
+    "sharp": "^0.35.5",
+    "typescript": "^5.9.0",
+    "vitest": "^5.0.5"
+  },
+  "engines": {
+    "node": ">=22"
+  }
+}

@@ -1,0 +1,6 @@
+{
+  "framework": "vite",
+  "installCommand": "npm ci",
+  "buildCommand": "npm run build -w @skyhoof/game-core && npm run build -w @skyhoof/catalog && npm run build -w @skyhoof/web",
+  "outputDirectory": "apps/web/dist"
+}
