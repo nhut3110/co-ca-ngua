@@ -96,6 +96,7 @@ export function GameView({
   playerSeat = 0,
   online = false,
   networkBusy = false,
+  networkLatency = null,
 }: {
   game: GameState;
   dispatch: (action: GameAction) => void;
@@ -112,6 +113,7 @@ export function GameView({
   playerSeat?: number;
   online?: boolean;
   networkBusy?: boolean;
+  networkLatency?: number | null;
 }) {
   const [selected, setSelected] = useState<string | null>(null);
   const [shieldTarget, setShieldTarget] = useState(false);
@@ -410,6 +412,16 @@ export function GameView({
       className={`game-layout ${compact ? 'compact-game' : ''} ${explore ? 'exploring' : ''} ${paused ? 'game-paused' : ''} immersive-game`}
     >
       <section className="game-world">
+        <div className="performance-hud" aria-label="Performance">
+          <span>
+            FPS <b data-fps>—</b>
+          </span>
+          {online && (
+            <span>
+              Ping <b>{networkLatency === null ? '—' : `${networkLatency} ms`}</b>
+            </span>
+          )}
+        </div>
         <div className="game-toolbar command-dock" ref={toolsRef}>
           <div className="dock-primary" role="toolbar" aria-label={t('Công cụ bàn cờ')}>
             <button

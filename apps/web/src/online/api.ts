@@ -3,7 +3,7 @@ export interface Room {
   code: string;
   version: number;
   status: 'waiting' | 'playing' | 'finished';
-  players: { seat: number; name: string }[];
+  players: { seat: number; name: string; bot?: boolean }[];
   capacity: number;
   config: GameConfig;
   game: GameState | null;
@@ -36,8 +36,8 @@ export async function roomRequest<T>(
   }
   return response.json() as Promise<T>;
 }
-export const createRoom = (config: GameConfig, name: string) =>
-  roomRequest<Room & { token: string }>('', { method: 'POST', body: { config, name } });
+export const createRoom = (config: GameConfig, name: string, botCount = 0) =>
+  roomRequest<Room & { token: string }>('', { method: 'POST', body: { config, name, botCount } });
 export const joinRoom = (code: string, name: string) =>
   roomRequest<Room & { token: string }>(`/${encodeURIComponent(code)}/join`, {
     method: 'POST',

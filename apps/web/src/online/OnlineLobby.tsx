@@ -28,6 +28,7 @@ export function OnlineLobby({
     horsesPerPlayer: 2,
   }));
   const [busy, setBusy] = useState(false);
+  const [botCount, setBotCount] = useState(0);
   const [localError, setLocalError] = useState('');
   const [qr, setQr] = useState('');
   const link = room ? `${location.origin}${location.pathname}?room=${room.code}` : '';
@@ -81,15 +82,45 @@ export function OnlineLobby({
                   {t('Số người chơi')}
                   <select
                     value={config.playerCount}
-                    onChange={(e) =>
-                      setConfig({ ...config, playerCount: Number(e.target.value) as 2 | 3 | 4 })
-                    }
+                    onChange={(e) => {
+                      const playerCount = Number(e.target.value) as 2 | 3 | 4;
+                      setConfig({ ...config, playerCount });
+                      setBotCount((count) => Math.min(count, playerCount - 1));
+                    }}
                   >
                     <option value={2}>2</option>
                     <option value={3}>3</option>
                     <option value={4}>4</option>
                   </select>
                 </label>
+                <label>
+                  {t('Số bot')}
+                  <select value={botCount} onChange={(e) => setBotCount(Number(e.target.value))}>
+                    {Array.from({ length: config.playerCount }, (_, count) => (
+                      <option key={count} value={count}>
+                        {count}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+                {botCount > 0 && (
+                  <label>
+                    {t('Độ khó bot')}: {config.difficulty}/5
+                    <input
+                      type="range"
+                      min="1"
+                      max="5"
+                      step="1"
+                      value={config.difficulty}
+                      onChange={(e) =>
+                        setConfig({
+                          ...config,
+                          difficulty: Number(e.target.value) as GameConfig['difficulty'],
+                        })
+                      }
+                    />
+                  </label>
+                )}
                 <label>
                   {t('Số quân mỗi người')}
                   <select
@@ -190,7 +221,9 @@ export function OnlineLobby({
                 <button
                   className="button primary"
                   disabled={busy || !name.trim()}
-                  onClick={() => run(async () => remember(await createRoom(config, name)))}
+                  onClick={() =>
+                    run(async () => remember(await createRoom(config, name, botCount)))
+                  }
                 >
                   {t('Tạo phòng')}
                 </button>
@@ -229,6 +262,7 @@ export function OnlineLobby({
                   {room.players.map((p) => (
                     <li key={p.seat}>
                       {p.name}
+                      {p.bot ? ` · ${t('Máy')}` : ''}
                       {p.seat === 0 ? ` · ${t('Chủ phòng')}` : ''}
                       {p.seat === room.seat ? ` · ${t('Bạn')}` : ''}
                     </li>

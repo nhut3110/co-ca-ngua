@@ -13,6 +13,7 @@ export function useOnline() {
   const [room, setRoom] = useState<Room | null>(null);
   const [error, setError] = useState('');
   const [sending, setSending] = useState(false);
+  const [latency, setLatency] = useState<number | null>(null);
   const sessionRef = useRef(session);
   sessionRef.current = session;
   const roomRef = useRef(room);
@@ -44,6 +45,7 @@ export function useOnline() {
     sessionRef.current = null;
     setSession(null);
     setRoom(null);
+    setLatency(null);
     setError('');
     return true;
   }, []);
@@ -54,11 +56,18 @@ export function useOnline() {
     const poll = async () => {
       if (inFlight || document.hidden) return;
       inFlight = true;
+      const started = performance.now();
       try {
         const r = await getRoom(session);
-        if (!cancelled) accept(r);
+        if (!cancelled) {
+          setLatency(Math.round(performance.now() - started));
+          accept(r);
+        }
       } catch (e) {
-        if (!cancelled) setError(e instanceof Error ? e.message : 'Không thể kết nối');
+        if (!cancelled) {
+          setLatency(null);
+          setError(e instanceof Error ? e.message : 'Không thể kết nối');
+        }
       } finally {
         inFlight = false;
       }
@@ -91,5 +100,5 @@ export function useOnline() {
     },
     [sending, accept],
   );
-  return { session, room, error, sending, begin, leave, accept, dispatch };
+  return { session, room, error, sending, latency, begin, leave, accept, dispatch };
 }

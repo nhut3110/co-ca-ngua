@@ -14,6 +14,9 @@ export function RenderMetrics() {
       renders++;
       const now = performance.now();
       if (now - elapsed < 1000 && renders > 1) return;
+      const fps = Math.round((frames * 1000) / Math.max(1, now - elapsed));
+      const fpsLabel = gl.domElement.closest('.game-layout')?.querySelector('[data-fps]');
+      if (fpsLabel) fpsLabel.textContent = String(fps);
       let meshes = 0;
       const pieces: { id: string; active: boolean; x: number; y: number }[] = [];
       const rect = gl.domElement.getBoundingClientRect();
@@ -50,7 +53,7 @@ export function RenderMetrics() {
         geometries: gl.info.memory.geometries,
         textures: gl.info.memory.textures,
         meshes,
-        fps: Math.round((frames * 1000) / Math.max(1, now - elapsed)),
+        fps,
         dpr: gl.getPixelRatio(),
         renders,
         shadowAutoUpdate: gl.shadowMap.autoUpdate,

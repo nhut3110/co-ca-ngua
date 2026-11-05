@@ -7,7 +7,13 @@ import {
   NotFoundException,
   UnauthorizedException,
 } from '@nestjs/common';
-import { applyAction, createGame, type GameAction, type GameConfig } from '@skyhoof/game-core';
+import {
+  applyAction,
+  chooseBotAction,
+  createGame,
+  type GameAction,
+  type GameConfig,
+} from '@skyhoof/game-core';
 import type { RoomRecord, RoomStore } from './room-store.js';
 
 const alphabet = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
@@ -66,7 +72,14 @@ export class RoomService {
       code: r.code,
       version: r.version,
       status: r.status,
-      players: r.players.map((p, i) => ({ seat: i, name: p.name })),
+      players: [
+        ...r.players.map((p, i) => ({ seat: i, name: p.name, bot: false })),
+        ...Array.from({ length: r.botCount ?? 0 }, (_, i) => ({
+          seat: r.players.length + i,
+          name: `Bot ${i + 1}`,
+          bot: true,
+        })),
+      ],
       capacity: r.config.playerCount,
       config: r.config,
       game,
@@ -74,7 +87,7 @@ export class RoomService {
       expiresAt: r.expiresAt,
     };
   }
-  async create(config: GameConfig, name: unknown) {
+  async create(config: GameConfig, name: unknown, botCount: unknown = 0) {
     const player = validName(name);
     let validated;
     try {
@@ -82,12 +95,19 @@ export class RoomService {
     } catch {
       throw new BadRequestException('Thiết lập ván không hợp lệ.');
     }
+    if (
+      !Number.isInteger(botCount) ||
+      (botCount as number) < 0 ||
+      (botCount as number) >= validated.config.playerCount
+    )
+      throw new BadRequestException('Số bot không hợp lệ.');
     const token = this.token();
     for (let i = 0; i < 12; i++) {
       const r: RoomRecord = {
         code: this.code(),
         version: 0,
         config: validated.config,
+        botCount: botCount as number,
         players: [{ name: player, tokenHash: hash(token) }],
         status: 'waiting',
         game: null,
@@ -104,7 +124,8 @@ export class RoomService {
       const r = await this.read(code),
         version = r.version;
       if (r.status !== 'waiting') throw new ConflictException('Ván đã bắt đầu.');
-      if (r.players.length >= r.config.playerCount) throw new ConflictException('Phòng đã đầy.');
+      if (r.players.length >= r.config.playerCount - (r.botCount ?? 0))
+        throw new ConflictException('Phòng đã đầy.');
       const seat = r.players.length;
       r.players.push({ name: player, tokenHash: hash(token) });
       r.version++;
@@ -113,8 +134,23 @@ export class RoomService {
     throw new ConflictException('Phòng vừa thay đổi, vui lòng thử lại.');
   }
   async snapshot(code: string, token: string) {
-    const r = await this.read(code);
-    return this.view(r, this.seat(r, token));
+    let r = await this.read(code);
+    const seat = this.seat(r, token);
+    if (r.status === 'playing' && r.game && r.game.current >= r.players.length) {
+      const version = r.version;
+      const source = structuredClone(r.game);
+      const action = chooseBotAction(source);
+      if (action.type === 'roll' || (action.type === 'spell' && action.spell === 'reroll'))
+        source.seed = randomInt(1, 2 ** 32);
+      const next = applyAction(source, action);
+      if (next !== source) {
+        r.game = next;
+        r.status = next.phase === 'finished' ? 'finished' : 'playing';
+        r.version++;
+        if (!(await this.store.compareAndSet(r, version))) r = await this.read(code);
+      }
+    }
+    return this.view(r, seat);
   }
   async leaveWaiting(code: string, token: string) {
     for (let attempt = 0; attempt < 5; attempt++) {
@@ -135,12 +171,14 @@ export class RoomService {
       version = r.version;
     if (seat !== 0) throw new ForbiddenException('Chỉ chủ phòng được bắt đầu.');
     if (r.status !== 'waiting') throw new ConflictException('Ván đã bắt đầu.');
-    if (r.players.length !== r.config.playerCount)
+    if (r.players.length !== r.config.playerCount - (r.botCount ?? 0))
       throw new ConflictException('Chưa đủ người chơi.');
     r.game = createGame(r.config, randomInt(1, 2 ** 32));
     r.players.forEach((p, i) => {
       r.game!.players[i].name = p.name;
     });
+    for (let i = 0; i < (r.botCount ?? 0); i++)
+      r.game.players[r.players.length + i].name = `Bot ${i + 1}`;
     r.status = 'playing';
     r.version++;
     if (!(await this.store.compareAndSet(r, version)))

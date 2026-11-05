@@ -5078,3 +5078,26 @@ input[type='range']::-webkit-slider-thumb {
 .online-columns.has-invite > section:last-child {
   order: -1;
 }
+
+.performance-hud {
+  position: absolute;
+  z-index: 20;
+  top: max(10px, env(safe-area-inset-top));
+  left: max(12px, env(safe-area-inset-left));
+  display: flex;
+  gap: 10px;
+  padding: 5px 8px;
+  border: 1px solid #ffffff1f;
+  border-radius: 5px;
+  background: #101a20bf;
+  color: #b5c6c6;
+  font:
+    600 10px/1.2 system-ui,
+    sans-serif;
+  font-variant-numeric: tabular-nums;
+  pointer-events: none;
+}
+.performance-hud b {
+  color: #edf5e9;
+  font-weight: 700;
+}

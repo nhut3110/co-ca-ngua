@@ -7,6 +7,7 @@ export interface RoomRecord {
   code: string;
   version: number;
   config: GameConfig;
+  botCount?: number;
   players: PlayerSeat[];
   status: 'waiting' | 'playing' | 'finished';
   game: GameState | null;

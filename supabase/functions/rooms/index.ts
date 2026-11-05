@@ -403,6 +403,107 @@ function applyAction(original, action) {
   }
   return original;
 }
+function playableMoves(state) {
+  return legalMoves(state).filter(
+    (h) => state.die === state.rawDie || h.progress >= 0 && h.progress + state.die < boardRules(state.config).trackLength
+  );
+}
+function threat(state, horse) {
+  const tile = absoluteTile(horse, state.config);
+  if (tile === null || horse.shield) return 0;
+  return state.horses.reduce((sum, h) => {
+    const from = absoluteTile(h, state.config);
+    if (h.owner === horse.owner || from === null) return sum;
+    const distance = (tile - from + boardRules(state.config).trackLength) % boardRules(state.config).trackLength;
+    return sum + (distance >= 1 && distance <= 6 && h.progress + distance < boardRules(state.config).trackLength ? 1 / 6 : 0);
+  }, 0);
+}
+function scoreMove(state, horse, level) {
+  const next = applyAction(state, { type: "move", horseId: horse.id });
+  if (next === state) return -Infinity;
+  const moved = next.horses.find((h) => h.id === horse.id);
+  const captures = state.horses.filter(
+    (h) => h.owner !== horse.owner && h.progress >= 0 && next.horses.find((n) => n.id === h.id).progress < 0
+  );
+  let score = (moved.progress === boardRules(state.config).finish ? 120 : moved.progress >= boardRules(state.config).trackLength ? 28 : 0) + captures.reduce((s, h) => s + 35 + h.progress * 0.5, 0);
+  score += horse.progress < 0 ? 10 : (moved.progress - horse.progress) * 0.8;
+  if (moved.shield && !horse.shield) score += 14;
+  if (level >= 3)
+    score += (threat(state, horse) - threat(next, moved)) * (15 + moved.progress * 0.9) + moved.progress * 0.12;
+  if (next.winner === horse.owner) score += 1e4;
+  return score;
+}
+function progressValue(state, owner) {
+  return state.horses.filter((h) => h.owner === owner).reduce(
+    (v, h) => v + (h.progress < 0 ? 0 : h.progress === boardRules(state.config).finish ? 110 : h.progress + 8),
+    0
+  );
+}
+function chooseBotMove(state, random = Math.random) {
+  const moves = playableMoves(state);
+  if (!moves.length) return null;
+  const level = state.config.difficulty;
+  if (level === 1 || level === 2 && random() < 0.35)
+    return moves[Math.floor(random() * moves.length)].id;
+  const scored = moves.map((horse) => {
+    let score = scoreMove(state, horse, level);
+    if (level >= 4) {
+      const samples = level === 4 ? 8 : 24;
+      let total = 0;
+      for (let sample = 0; sample < samples; sample++) {
+        let simulation = applyAction(state, { type: "move", horseId: horse.id });
+        simulation.seed = (Math.floor(random() * 4294967295) || 1) >>> 0;
+        for (let step = 0; step < (level === 4 ? 8 : 16) && simulation.phase !== "finished"; step++) {
+          if (simulation.phase === "roll") simulation = applyAction(simulation, { type: "roll" });
+          else {
+            const options = playableMoves(simulation).sort(
+              (a, b) => scoreMove(simulation, b, 3) - scoreMove(simulation, a, 3)
+            );
+            simulation = applyAction(
+              simulation,
+              options.length ? { type: "move", horseId: options[0].id } : { type: "pass" }
+            );
+          }
+        }
+        total += progressValue(simulation, horse.owner) - Math.max(
+          ...simulation.players.filter((p) => p.id !== horse.owner).map((p) => progressValue(simulation, p.id))
+        ) * 0.65;
+      }
+      score += total / samples * 0.5;
+    }
+    return { id: horse.id, score: score + random() * (level === 2 ? 12 : 0.8) };
+  });
+  return scored.sort((a, b) => b.score - a.score)[0].id;
+}
+function chooseBotAction(state, random = Math.random) {
+  if (state.config.modules.spells && !state.usedSpell && state.config.difficulty >= 2) {
+    if (state.phase === "roll" && state.players[state.current].mana >= 2) {
+      const risky = state.horses.filter((h) => h.owner === state.current && threat(state, h) > 0).sort((a, b) => b.progress - a.progress)[0];
+      if (risky && risky.progress > 18) return { type: "shield", horseId: risky.id };
+    }
+    if (state.phase === "move") {
+      if (!playableMoves(state).length && state.players[state.current].mana >= 3) {
+        const summonTry = applyAction(state, { type: "spell", spell: "summon" });
+        if (summonTry !== state && playableMoves(summonTry).length > 0)
+          return { type: "spell", spell: "summon" };
+      }
+      if (!playableMoves(state).length && state.players[state.current].mana >= 2)
+        return { type: "spell", spell: "reroll" };
+      const currentBest = Math.max(
+        -100,
+        ...playableMoves(state).map((h) => scoreMove(state, h, 3))
+      );
+      for (const spell of ["plus", "minus", "boost"]) {
+        const next = applyAction(state, { type: "spell", spell });
+        if (next !== state && Math.max(-100, ...playableMoves(next).map((h) => scoreMove(next, h, 3))) > currentBest + 22)
+          return { type: "spell", spell };
+      }
+    }
+  }
+  if (state.phase === "roll") return { type: "roll" };
+  const horseId = chooseBotMove(state, random);
+  return horseId ? { type: "move", horseId } : { type: "pass" };
+}
 
 // apps/api/src/rooms/room-service.ts
 var alphabet = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
@@ -455,7 +556,14 @@ var RoomService = class {
       code: r.code,
       version: r.version,
       status: r.status,
-      players: r.players.map((p, i) => ({ seat: i, name: p.name })),
+      players: [
+        ...r.players.map((p, i) => ({ seat: i, name: p.name, bot: false })),
+        ...Array.from({ length: r.botCount ?? 0 }, (_, i) => ({
+          seat: r.players.length + i,
+          name: `Bot ${i + 1}`,
+          bot: true
+        }))
+      ],
       capacity: r.config.playerCount,
       config: r.config,
       game,
@@ -463,7 +571,7 @@ var RoomService = class {
       expiresAt: r.expiresAt
     };
   }
-  async create(config, name) {
+  async create(config, name, botCount = 0) {
     const player = validName(name);
     let validated;
     try {
@@ -471,12 +579,15 @@ var RoomService = class {
     } catch {
       throw new BadRequestException("Thi\u1EBFt l\u1EADp v\xE1n kh\xF4ng h\u1EE3p l\u1EC7.");
     }
+    if (!Number.isInteger(botCount) || botCount < 0 || botCount >= validated.config.playerCount)
+      throw new BadRequestException("S\u1ED1 bot kh\xF4ng h\u1EE3p l\u1EC7.");
     const token = this.token();
     for (let i = 0; i < 12; i++) {
       const r = {
         code: this.code(),
         version: 0,
         config: validated.config,
+        botCount,
         players: [{ name: player, tokenHash: hash(token) }],
         status: "waiting",
         game: null,
@@ -491,7 +602,8 @@ var RoomService = class {
     for (let i = 0; i < 5; i++) {
       const r = await this.read(code), version = r.version;
       if (r.status !== "waiting") throw new ConflictException("V\xE1n \u0111\xE3 b\u1EAFt \u0111\u1EA7u.");
-      if (r.players.length >= r.config.playerCount) throw new ConflictException("Ph\xF2ng \u0111\xE3 \u0111\u1EA7y.");
+      if (r.players.length >= r.config.playerCount - (r.botCount ?? 0))
+        throw new ConflictException("Ph\xF2ng \u0111\xE3 \u0111\u1EA7y.");
       const seat = r.players.length;
       r.players.push({ name: player, tokenHash: hash(token) });
       r.version++;
@@ -500,8 +612,23 @@ var RoomService = class {
     throw new ConflictException("Ph\xF2ng v\u1EEBa thay \u0111\u1ED5i, vui l\xF2ng th\u1EED l\u1EA1i.");
   }
   async snapshot(code, token) {
-    const r = await this.read(code);
-    return this.view(r, this.seat(r, token));
+    let r = await this.read(code);
+    const seat = this.seat(r, token);
+    if (r.status === "playing" && r.game && r.game.current >= r.players.length) {
+      const version = r.version;
+      const source = structuredClone(r.game);
+      const action = chooseBotAction(source);
+      if (action.type === "roll" || action.type === "spell" && action.spell === "reroll")
+        source.seed = randomInt(1, 2 ** 32);
+      const next = applyAction(source, action);
+      if (next !== source) {
+        r.game = next;
+        r.status = next.phase === "finished" ? "finished" : "playing";
+        r.version++;
+        if (!await this.store.compareAndSet(r, version)) r = await this.read(code);
+      }
+    }
+    return this.view(r, seat);
   }
   async leaveWaiting(code, token) {
     for (let attempt = 0; attempt < 5; attempt++) {
@@ -519,12 +646,14 @@ var RoomService = class {
     const r = await this.read(code), seat = this.seat(r, token), version = r.version;
     if (seat !== 0) throw new ForbiddenException("Ch\u1EC9 ch\u1EE7 ph\xF2ng \u0111\u01B0\u1EE3c b\u1EAFt \u0111\u1EA7u.");
     if (r.status !== "waiting") throw new ConflictException("V\xE1n \u0111\xE3 b\u1EAFt \u0111\u1EA7u.");
-    if (r.players.length !== r.config.playerCount)
+    if (r.players.length !== r.config.playerCount - (r.botCount ?? 0))
       throw new ConflictException("Ch\u01B0a \u0111\u1EE7 ng\u01B0\u1EDDi ch\u01A1i.");
     r.game = createGame(r.config, randomInt(1, 2 ** 32));
     r.players.forEach((p, i) => {
       r.game.players[i].name = p.name;
     });
+    for (let i = 0; i < (r.botCount ?? 0); i++)
+      r.game.players[r.players.length + i].name = `Bot ${i + 1}`;
     r.status = "playing";
     r.version++;
     if (!await this.store.compareAndSet(r, version))
@@ -599,7 +728,8 @@ function createHandler(store) {
       const code = match[1]?.toUpperCase();
       const token = req.headers.get("x-room-token") ?? "";
       let result;
-      if (!code && req.method === "POST") result = await rooms.create(body?.config, body?.name);
+      if (!code && req.method === "POST")
+        result = await rooms.create(body?.config, body?.name, body?.botCount);
       else if (code && !match[2] && req.method === "GET")
         result = await rooms.snapshot(code, token);
       else if (code && req.method === "POST" && match[2] === "join")

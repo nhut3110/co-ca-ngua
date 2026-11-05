@@ -261,6 +261,7 @@ export default function App() {
             playerSeat={online.room?.seat ?? 0}
             online={!!online.session}
             networkBusy={online.sending}
+            networkLatency={online.latency}
             onExit={exit}
             onRules={() => setDialog('rules')}
             onReplay={() => startGame(game.config)}

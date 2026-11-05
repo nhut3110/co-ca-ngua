@@ -67,3 +67,34 @@ it('releases waiting seats and transfers host without breaking reconnect tokens'
   await service.leaveWaiting(host.code, guest.token);
   await expect(service.snapshot(host.code, guest.token)).rejects.toThrow();
 });
+
+it('supports two humans and two server-controlled bots and serializes concurrent bot polls', async () => {
+  const store = new MemoryRoomStore();
+  const service = new RoomService(store);
+  const config = structuredClone(DEFAULT_CONFIG);
+  config.playerCount = 4;
+  config.horsesPerPlayer = 2;
+  const host = await service.create(config, 'An', 2);
+  expect(host.players.filter((p) => p.bot)).toHaveLength(2);
+  await expect(service.create(config, 'An', 4)).rejects.toThrow();
+  const guest = await service.join(host.code, 'Bình');
+  await expect(service.join(host.code, 'Chi')).rejects.toThrow('đầy');
+  const started = await service.start(host.code, host.token);
+  expect(started.game?.players.map((p) => p.name)).toEqual(['An', 'Bình', 'Bot 1', 'Bot 2']);
+  const record = await store.get(host.code);
+  if (!record?.game) throw new Error('Game missing');
+  record.game.current = 2;
+  expect(await store.compareAndSet(record, record.version)).toBe(true);
+  const [a, b] = await Promise.all([
+    service.snapshot(host.code, host.token),
+    service.snapshot(host.code, guest.token),
+  ]);
+  const saved = await store.get(host.code);
+  expect(saved?.version).toBe(started.version + 1);
+  expect(Math.max(a.version, b.version)).toBe(started.version + 1);
+  expect(saved?.game?.phase).toBe('move');
+  await expect(
+    service.action(host.code, host.token, saved!.version, { type: 'pass' }),
+  ).rejects.toThrow();
+  await expect(service.snapshot(host.code, 'x'.repeat(43))).rejects.toThrow();
+});

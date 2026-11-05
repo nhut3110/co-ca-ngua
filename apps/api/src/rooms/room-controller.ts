@@ -5,8 +5,8 @@ import { RoomService } from './room-service.js';
 @Controller('rooms')
 export class RoomController {
   constructor(@Inject(RoomService) private readonly rooms: RoomService) {}
-  @Post() create(@Body() body: { config: GameConfig; name: string }) {
-    return this.rooms.create(body?.config, body?.name);
+  @Post() create(@Body() body: { config: GameConfig; name: string; botCount?: number }) {
+    return this.rooms.create(body?.config, body?.name, body?.botCount);
   }
   @Post(':code/join') join(@Param('code') code: string, @Body() body: { name: string }) {
     return this.rooms.join(code.toUpperCase(), body?.name);

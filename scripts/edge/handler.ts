@@ -50,7 +50,8 @@ export function createHandler(store: RoomStore) {
       const code = match[1]?.toUpperCase();
       const token = req.headers.get('x-room-token') ?? '';
       let result: unknown;
-      if (!code && req.method === 'POST') result = await rooms.create(body?.config, body?.name);
+      if (!code && req.method === 'POST')
+        result = await rooms.create(body?.config, body?.name, body?.botCount);
       else if (code && !match[2] && req.method === 'GET')
         result = await rooms.snapshot(code, token);
       else if (code && req.method === 'POST' && match[2] === 'join')

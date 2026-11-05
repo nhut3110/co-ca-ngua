@@ -440,5 +440,8 @@
   "Ván online vẫn tiếp tục khi bạn tạm dừng giao diện.": "The online match continues while your view is paused.",
   "Ván online đang đồng bộ": "Online match syncing",
   "Rời phòng sẽ xóa quyền vào lại trên tab này.": "Leaving removes the reconnect token from this tab.",
-  "Bàn cờ": "Board"
+  "Bàn cờ": "Board",
+  "Số bot": "Number of bots",
+  "Độ khó bot": "Bot difficulty",
+  "Máy": "Bot"
 }

@@ -18,6 +18,7 @@ try {
   }
   process.env.API_URL = 'http://127.0.0.1:3109';
   await import('./online-api-e2e.mjs');
+  await import('./hybrid-api-e2e.mjs');
 } finally {
   server.kill('SIGTERM');
 }
