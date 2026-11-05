@@ -3,3 +3,4 @@ node_modules
 artifacts
 package-lock.json
 scripts/web-game-client.mjs
+supabase/functions/rooms/index.ts

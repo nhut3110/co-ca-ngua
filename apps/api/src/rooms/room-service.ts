@@ -1,4 +1,5 @@
 import { createHash, randomBytes, randomInt, timingSafeEqual } from 'node:crypto';
+import { Buffer } from 'node:buffer';
 import {
   BadRequestException,
   ConflictException,
