@@ -14,7 +14,7 @@ The online implementation uses a turn-based REST API. The production adapter tar
 - The Skyhoof Supabase project has the rooms migration applied. RLS is enabled, anon/authenticated cannot read the table, and the service role can access it. Never expose the service role key to the frontend.
 - `npm run build:edge` bundles the shared room service and game rules into `supabase/functions/rooms/index.ts`. `npm run test:edge` exercises a complete match through the Edge HTTP handler locally. Deploy the generated function as `rooms` with JWT verification disabled: seat tokens are checked by the function itself and no Supabase user login is required. Supabase provides the service-role secret to the function runtime. Confirm the function configuration and test the deployed function before connecting the frontend.
 - Set Vercel `VITE_API_URL` to the Supabase project URL followed by `/functions/v1`, then redeploy. No Supabase service key belongs in Vercel or the browser. The function's URL is public; tokens authorize each room seat.
-- GitHub Actions checks the generated bundle and tests the handler. Deployments require separate provider setup; a Git push alone does not deploy the function.
+- GitHub Actions checks the generated bundle and tests the handler. Supabase's GitHub integration can deploy declared functions and migrations from `main` when the project is linked and Deploy to production is enabled. Vercel independently deploys the frontend from the same branch. Verify both deployment results after a push; GitHub checks do not gate either provider's production deployment by themselves.
 
 ## Session and current limitations
 
